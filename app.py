@@ -4,8 +4,7 @@ import numpy as np
 import google.generativeai as genai
 from flask import Flask, request, render_template, jsonify
 from werkzeug.utils import secure_filename
-# We no longer need all of tensorflow, just the 'lite' interpreter
-import tflite_runtime.interpreter as tflite
+from tensorflow.keras.models import load_model
 from mtcnn.mtcnn import MTCNN
 from PIL import Image
 
@@ -17,17 +16,14 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 30 * 1024 * 1024  # 30MB Upload Limit
 
 # --- Model & API Initialization ---
-# Load TFLite Deepfake Detection Model
+# Load Deepfake Detection Model
 try:
-    interpreter = tflite.Interpreter(model_path='model/mesonet_model.tflite')
-    interpreter.allocate_tensors()
-    # Get input and output tensor details
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
-    print("✅ TFLite model loaded successfully.")
+    # Use the exact name of your downloaded model file
+    deepfake_model = load_model('model/mesonet_model.h5', compile=False)
+    print("✅ MesoNet model loaded successfully.")
 except Exception as e:
-    print(f"❌ Error loading TFLite model: {e}")
-    interpreter = None
+    print(f"❌ Error loading MesoNet model: {e}")
+    deepfake_model = None
 
 # Initialize Face Detector
 try:
@@ -38,13 +34,16 @@ except Exception as e:
     face_detector = None
 
 # Configure Gemini API
+# !! IMPORTANT: Set this in your environment, not in the code.
 try:
+    # This line reads the key from your terminal environment
     GOOGLE_API_KEY = os.environ.get('GEMINI_API_KEY')
     if not GOOGLE_API_KEY:
         print("❌ Error: GEMINI_API_KEY environment variable not set.")
         gemini_model = None
     else:
         genai.configure(api_key=GOOGLE_API_KEY)
+        # Use the vision model
         gemini_model = genai.GenerativeModel('gemini-2.5-flash')
         print("✅ Gemini API configured.")
 except Exception as e:
@@ -58,26 +57,10 @@ def allowed_file(filename):
         filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+# Your simple HTML page
 @app.route('/')
 def index():
     return render_template('index.html')
-
-
-def tflite_predict(face_batch):
-    """Helper function to run inference with the TFLite model."""
-    if not interpreter:
-        return 0.0  # Fail gracefully
-
-    # Set the input tensor
-    interpreter.set_tensor(input_details[0]['index'], face_batch)
-
-    # Run inference
-    interpreter.invoke()
-
-    # Get the output tensor
-    prediction = interpreter.get_tensor(output_details[0]['index'])
-
-    return prediction[0][0]
 
 
 def preprocess_image(image_path):
@@ -98,22 +81,24 @@ def preprocess_image(image_path):
     if not faces:
         return None, "No face detected in the image."
 
+    # Use the first and most confident face
     x, y, w, h = faces[0]['box']
+
+    # Ensure coordinates are positive
     x, y = abs(x), abs(y)
+
+    # FIX: Crop from the RGB image, not the BGR one
     face_crop = img_rgb[y:y + h, x:x + w]
 
     if face_crop.size == 0:
         return None, "Face crop was empty."
 
+    # MesoNet expects 256x256
     face_resized = cv2.resize(face_crop, (256, 256))
-
-    # TFLite model expects float32
     face_resized = face_resized.astype('float32') / 255.0
 
-    # Convert single image to a batch of 1 and ensure type
-    face_batch = np.expand_dims(face_resized, axis=0).astype(np.float32)
-
-    return face_batch, None
+    # Convert single image to a batch of 1
+    return np.expand_dims(face_resized, axis=0), None
 
 
 def get_gemini_explanation(image_path, prediction_label):
@@ -125,17 +110,19 @@ def get_gemini_explanation(image_path, prediction_label):
 
     try:
         img_pil = Image.open(image_path)
+
         prompt = f"""
-                This image was flagged as **{prediction_label}**.
+                        This image was flagged as **{prediction_label}**.
 
-                Give me a quick, point-by-point analysis of the visual evidence. I need to know why it was flagged this way.
+                        Give me a quick, point-by-point analysis of the visual evidence. I need to know why it was flagged this way.
 
-                - Be direct, confident, and use natural language, like a human expert.
-                - Focus on specific details: skin, lighting, eyes, or edges.
-                - Keep it very short and easy for a non-expert to read.
+                        - Be direct, confident, and use natural language, like a human expert.
+                        - Focus on specific details: skin, lighting, eyes, or edges.
+                        - Keep it very short and easy for a non-expert to read.
 
-                Do not mention AI, models, or any formal analysis terms (like "artifact" or "compression"). Just give me the visual facts.
-                """
+                        Do not mention AI, models, or any formal analysis terms (like "artifact" or "compression"). Just give me the visual facts.
+                        """
+
         response = gemini_model.generate_content([prompt, img_pil])
         return response.text
     except Exception as e:
@@ -148,19 +135,16 @@ def predict():
         return jsonify({'error': 'No file part'}), 400
 
     file = request.files['file']
+
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
 
-    if not interpreter or not face_detector:
+    if not deepfake_model or not face_detector:
         return jsonify({'error': 'Server models not initialized. Check logs.'}), 500
 
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-
-        # Ensure the uploads folder exists
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
         file.save(filepath)
 
         file_type = filename.rsplit('.', 1)[1].lower()
@@ -170,19 +154,21 @@ def predict():
             processed_face, error_msg = preprocess_image(filepath)
 
             if processed_face is None:
-                os.remove(filepath)
+                os.remove(filepath)  # Clean up upload
                 return jsonify({'error': error_msg}), 400
 
-            # Run TFLite prediction
-            prediction = tflite_predict(processed_face)
+            # Run MesoNet prediction
+            prediction = deepfake_model.predict(processed_face)[0][0]
 
-            # A HIGH score (near 1.0) means REAL
-            # Use a threshold of 0.97 as we discovered
+            # --- LOGIC FIX ---
+            # Assuming HIGH (near 1.0) = REAL
             prediction_label = "REAL" if prediction > 0.97 else "FAKE"
             confidence = f"{prediction * 100:.2f}%" if prediction_label == "REAL" else f"{(1 - prediction) * 100:.2f}%"
 
+            # Get Gemini Explanation
             reason = get_gemini_explanation(filepath, prediction_label)
-            os.remove(filepath)
+
+            os.remove(filepath)  # Clean up upload
 
             return jsonify({
                 'filename': filename,
@@ -196,21 +182,22 @@ def predict():
         elif file_type in {'mp4', 'mov'}:
             cap = cv2.VideoCapture(filepath)
             frame_predictions = []
-
-            frame_to_explain_real = None
-            frame_to_explain_fake = None
-            best_real_score = 0.0  # Look for high scores (max)
-            best_fake_score = 1.0  # Look for low scores (min)
+            highest_fake_frame = None
+            frame_to_explain = None
+            max_fake_prob = 0.0  # Store highest fake prob (near 0.0)
+            max_real_prob = 0.97  # Store highest real prob (near 1.0)
 
             frame_count = 0
+            # Process 1 frame per second to save time
             fps = cap.get(cv2.CAP_PROP_FPS)
-            if not fps or fps < 1: fps = 25
+            if not fps or fps < 1: fps = 25  # Default
 
             while cap.isOpened():
                 frame_exists, frame = cap.read()
                 if not frame_exists:
                     break
 
+                # Check if this frame is one we should process
                 frame_id = int(round(cap.get(1)))
                 if frame_id % int(fps) == 0:
                     frame_count += 1
@@ -220,52 +207,51 @@ def predict():
                     if faces:
                         x, y, w, h = faces[0]['box']
                         x, y = abs(x), abs(y)
+
+                        # FIX: Crop from the RGB frame
                         face_crop = frame_rgb[y:y + h, x:x + w]
 
                         if face_crop.size > 0:
                             face_resized = cv2.resize(face_crop, (256, 256))
                             face_resized = face_resized.astype('float32') / 255.0
-                            face_batch = np.expand_dims(face_resized, axis=0).astype(np.float32)
+                            face_batch = np.expand_dims(face_resized, axis=0)
 
-                            pred = tflite_predict(face_batch)
+                            pred = deepfake_model.predict(face_batch)[0][0]
                             frame_predictions.append(pred)
 
-                            if pred > best_real_score:
-                                best_real_score = pred
-                                frame_to_explain_real = frame.copy()
+                            # Save the most "fake" looking frame for Gemini
+                            if pred < (1 - max_real_prob):
+                                max_real_prob = (1 - pred)  # Store as confidence, not raw score
+                                frame_to_explain = frame
 
-                            if pred < best_fake_score:
-                                best_fake_score = pred
-                                frame_to_explain_fake = frame.copy()
+                            # Save the most "real" looking frame for Gemini
+                            elif pred > max_real_prob:
+                                max_real_prob = pred
+                                frame_to_explain = frame
 
             cap.release()
 
             if not frame_predictions:
-                os.remove(filepath)
+                os.remove(filepath)  # Clean up upload
                 return jsonify({'error': 'No faces detected in any video frames.'}), 400
 
+            # Aggregate results
             avg_prediction = np.mean(frame_predictions)
 
-            # A HIGH score (near 1.0) means REAL
-            # Use a threshold of 0.97 as we discovered
+            # --- LOGIC FIX ---
+            # Assuming HIGH (near 1.0) = REAL
             prediction_label = "REAL" if avg_prediction > 0.97 else "FAKE"
             confidence = f"{avg_prediction * 100:.2f}%" if prediction_label == "REAL" else f"{(1 - avg_prediction) * 100:.2f}%"
 
+            # Save the frame-to-explain and send to Gemini
             reason = "Could not generate explanation for video."
-            frame_to_save = None
-
-            if prediction_label == "REAL":
-                frame_to_save = frame_to_explain_real
-            else:
-                frame_to_save = frame_to_explain_fake
-
-            if frame_to_save is not None:
+            if frame_to_explain is not None:
                 frame_filename = os.path.join(app.config['UPLOAD_FOLDER'], f"frame_{filename}.jpg")
-                cv2.imwrite(frame_filename, frame_to_save)
+                cv2.imwrite(frame_filename, frame_to_explain)
                 reason = get_gemini_explanation(frame_filename, prediction_label)
-                os.remove(frame_filename)
+                os.remove(frame_filename)  # Clean up frame
 
-            os.remove(filepath)
+            os.remove(filepath)  # Clean up video
 
             return jsonify({
                 'filename': filename,
@@ -281,7 +267,7 @@ def predict():
 
 # --- Run the App ---
 if __name__ == '__main__':
+    # Make sure 'uploads' folder exists
     if not os.path.exists(UPLOAD_FOLDER):
         os.makedirs(UPLOAD_FOLDER)
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
-

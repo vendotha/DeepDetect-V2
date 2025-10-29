@@ -1,8 +1,9 @@
 Flask
 gunicorn
-tflite-runtime          # The lightweight TensorFlow Lite interpreter
-opencv-python-headless  # Server version of OpenCV
+onnxruntime             # The ONNX inference engine
+opencv-python-headless
 mtcnn
 google-generativeai
 Pillow
-numpy                   # mtcnn might need this explicitly
+numpy~=1.26.0           # Keep pinned for stability with other libs
+tensorflow
