@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deepfake Detector</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.95;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease;
+            margin-bottom: 30px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+        }
+
+        .upload-area.drag-over {
+            border-color: #34c759;
+            background: linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-name {
+            margin-top: 15px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            font-weight: 600;
+            color: #667eea;
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-top: 20px;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Advanced Loading Component */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loading-container {
+            text-align: center;
+            color: white;
+        }
+
+        .loading-animation {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 30px;
+        }
+
+        .loading-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 4px solid transparent;
+            border-radius: 50%;
+            animation: rotate 2s linear infinite;
+        }
+
+        .loading-ring:nth-child(1) {
+            border-top-color: #667eea;
+            animation-duration: 1.5s;
+        }
+
+        .loading-ring:nth-child(2) {
+            border-right-color: #764ba2;
+            animation-duration: 2s;
+            animation-direction: reverse;
+        }
+
+        .loading-ring:nth-child(3) {
+            border-bottom-color: #fa709a;
+            animation-duration: 2.5s;
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-dots {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 20px;
+        }
+
+        .loading-dots span {
+            animation: bounce 1.4s infinite ease-in-out;
+            display: inline-block;
+            margin: 0 2px;
+        }
+
+        .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+        }
+
+        .loading-text {
+            font-size: 1.2rem;
+            margin-top: 10px;
+            opacity: 0.9;
+        }
+
+        /* Result Layout - Horizontal */
+        .result {
+            display: none;
+            animation: slideIn 0.5s ease-out;
+            scroll-margin-top: 20px;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .result-header h2 {
+            color: #333;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .result-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .media-preview {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .media-preview img,
+        .media-preview video {
+            max-width: 100%;
+            max-height: 500px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            margin-bottom: 15px;
+        }
+
+        .media-filename {
+            font-weight: 600;
+            color: #666;
+            text-align: center;
+            word-break: break-word;
+        }
+
+        .analysis-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Prediction Card - Enhanced */
+        .prediction-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .prediction-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .prediction-label {
+            font-size: 0.9rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .prediction-result {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .prediction-status {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .prediction-icon {
+            font-size: 3rem;
+            animation: scaleIn 0.5s ease-out;
+        }
+
+        @keyframes scaleIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .prediction-text {
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .fake-prediction {
+            color: #ff3b30;
+        }
+
+        .real-prediction {
+            color: #34c759;
+        }
+
+        .confidence-bar-container {
+            background: #f0f0f0;
+            border-radius: 10px;
+            height: 12px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .confidence-bar {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 1s ease-out;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .confidence-text {
+            font-size: 1.1rem;
+            color: #666;
+            margin-top: 8px;
+        }
+
+        .analysis-details {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 15px;
+            padding: 25px;
+        }
+
+        .analysis-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .analysis-points {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .analysis-point {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.2s ease;
+        }
+
+        .analysis-point:hover {
+            transform: translateX(5px);
+        }
+
+        .analysis-point:last-child {
+            margin-bottom: 0;
+        }
+
+        .point-icon {
+            font-size: 1.2rem;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .point-text {
+            line-height: 1.6;
+            color: #444;
+            flex: 1;
+        }
+
+        .voice-btn {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(250, 112, 154, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .voice-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(250, 112, 154, 0.6);
+        }
+
+        .voice-btn.speaking {
+            animation: speakPulse 1s ease-in-out infinite;
+        }
+
+        @keyframes speakPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .error {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .result-content {
+                grid-template-columns: 1fr;
+            }
+
+            .media-preview {
+                order: -1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0;
+            }
+
+            .card {
+                padding: 25px;
+                border-radius: 15px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .header p {
+                font-size: 1rem;
+            }
+
+            .upload-area {
+                padding: 40px 20px;
+            }
+
+            .upload-icon {
+                font-size: 3rem;
+            }
+
+            .prediction-text {
+                font-size: 1.8rem;
+            }
+
+            .prediction-icon {
+                font-size: 2.5rem;
+            }
+
+            .result-header h2 {
+                font-size: 1.5rem;
+            }
+
+            .analysis-point {
+                padding: 12px;
+            }
+
+            .point-text {
+                font-size: 0.95rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 1.6rem;
+            }
+
+            .prediction-status {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .prediction-text {
+                font-size: 1.5rem;
+            }
+
+            .analysis-details {
+                padding: 15px;
+            }
+
+            .analysis-points {
+                padding: 15px;
+            }
+
+            .analysis-point {
+                gap: 8px;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Deepfake Detector</h1>
+            <p>Upload an image or video to analyze its authenticity</p>
+        </div>
+
+        <div class="card">
+            <form id="uploadForm">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <h3>Drop your file here or click to browse</h3>
+                    <p style="margin-top: 10px; color: #666;">Supports JPG, PNG, MP4, MOV</p>
+                    <input type="file" id="fileInput" name="file" accept="image/*,video/*" required>
+                    <div class="file-name" id="fileName"></div>
+                </div>
+
+                <button type="submit" class="btn" id="analyzeBtn">Analyze File</button>
+            </form>
+        </div>
+
+        <div class="card result" id="result">
+            <div class="result-header">
+                <h2>📊 Analysis Complete</h2>
+            </div>
+
+            <div class="result-content">
+                <!-- Media Preview -->
+                <div class="media-preview">
+                    <div id="mediaContainer"></div>
+                    <div class="media-filename" id="mediaFilename"></div>
+                </div>
+
+                <!-- Analysis Panel -->
+                <div class="analysis-panel">
+                    <!-- Prediction Card -->
+                    <div class="prediction-card">
+                        <div class="prediction-label">Detection Result</div>
+                        <div class="prediction-result">
+                            <div class="prediction-status">
+                                <div class="prediction-icon" id="predictionIcon"></div>
+                                <div class="prediction-text" id="predictionText"></div>
+                            </div>
+                        </div>
+                        <div class="prediction-label">Confidence Level</div>
+                        <div class="confidence-bar-container">
+                            <div class="confidence-bar" id="confidenceBar"></div>
+                        </div>
+                        <div class="confidence-text" id="confidenceText"></div>
+                    </div>
+
+                    <!-- Analysis Details -->
+                    <div class="analysis-details">
+                        <div class="analysis-title">
+                            <span>🔬</span>
+                            <span>Detailed Analysis</span>
+                        </div>
+                        <div class="analysis-points" id="analysisPoints"></div>
+                        <button class="voice-btn" id="voiceBtn">
+                            <span id="voiceIcon">🔊</span>
+                            <span id="voiceBtnText">Read Analysis</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-container">
+            <div class="loading-animation">
+                <div class="loading-ring"></div>
+                <div class="loading-ring"></div>
+                <div class="loading-ring"></div>
+            </div>
+            <div class="loading-dots">
+                Analyzing<span>.</span><span>.</span><span>.</span>
+            </div>
+            <div class="loading-text">This may take a moment, especially for videos</div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('uploadForm');
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const fileName = document.getElementById('fileName');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const result = document.getElementById('result');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const voiceBtn = document.getElementById('voiceBtn');
+        const voiceBtnText = document.getElementById('voiceBtnText');
+        const voiceIcon = document.getElementById('voiceIcon');
+
+        let currentSpeech = null;
+        let uploadedFile = null;
+        let fullAnalysisText = '';
+
+        // File upload interactions
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                uploadedFile = e.target.files[0];
+                fileName.textContent = uploadedFile.name;
+                fileName.style.display = 'block';
+            }
+        });
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+
+            if (e.dataTransfer.files.length > 0) {
+                uploadedFile = e.dataTransfer.files[0];
+                fileInput.files = e.dataTransfer.files;
+                fileName.textContent = uploadedFile.name;
+                fileName.style.display = 'block';
+            }
+        });
+
+        // Form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            loadingOverlay.style.display = 'flex';
+            result.style.display = 'none';
+            analyzeBtn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    displayResult(data);
+                    // Smooth scroll to results
+                    setTimeout(() => {
+                        result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 300);
+                } else {
+                    displayError(data.error || 'An error occurred during analysis');
+                }
+
+            } catch (error) {
+                displayError(`Network Error: ${error.message}`);
+            } finally {
+                loadingOverlay.style.display = 'none';
+                analyzeBtn.disabled = false;
+            }
+        });
+
+        function parseAnalysisIntoPoints(text) {
+            // Try to split by common delimiters
+            const points = [];
+
+            // Split by periods, newlines, or numbered lists
+            const sentences = text.split(/[.!]\s+|\n+|\d+\.\s+/)
+                .map(s => s.trim())
+                .filter(s => s.length > 10); // Filter out very short fragments
+
+            // If we have multiple sentences, use them as points
+            if (sentences.length > 1) {
+                return sentences.map(s => s.endsWith('.') ? s : s + '.');
+            }
+
+            // If it's one long paragraph, try to split intelligently
+            const words = text.split(' ');
+            if (words.length > 30) {
+                // Split into chunks of reasonable length
+                const chunkSize = Math.ceil(words.length / 3);
+                for (let i = 0; i < words.length; i += chunkSize) {
+                    const chunk = words.slice(i, i + chunkSize).join(' ');
+                    if (chunk.trim()) {
+                        points.push(chunk.trim().endsWith('.') ? chunk.trim() : chunk.trim() + '.');
+                    }
+                }
+                return points;
+            }
+
+            // Default: return as single point
+            return [text];
+        }
+
+        function displayResult(data) {
+            // Display media preview
+            const mediaContainer = document.getElementById('mediaContainer');
+            const mediaFilename = document.getElementById('mediaFilename');
+
+            mediaContainer.innerHTML = '';
+            const fileType = uploadedFile.type.split('/')[0];
+
+            if (fileType === 'image') {
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(uploadedFile);
+                mediaContainer.appendChild(img);
+            } else if (fileType === 'video') {
+                const video = document.createElement('video');
+                video.src = URL.createObjectURL(uploadedFile);
+                video.controls = true;
+                mediaContainer.appendChild(video);
+            }
+
+            mediaFilename.textContent = data.filename;
+
+            // Display prediction
+            const isFake = data.prediction === 'FAKE';
+            const predictionText = document.getElementById('predictionText');
+            const predictionIcon = document.getElementById('predictionIcon');
+
+            predictionText.textContent = data.prediction;
+            predictionText.className = `prediction-text ${isFake ? 'fake-prediction' : 'real-prediction'}`;
+            predictionIcon.textContent = isFake ? '⚠️' : '✅';
+
+            // Display confidence
+            const confidenceValue = parseFloat(data.confidence.replace('%', ''));
+            const confidenceBar = document.getElementById('confidenceBar');
+            const confidenceText = document.getElementById('confidenceText');
+
+            setTimeout(() => {
+                confidenceBar.style.width = confidenceValue + '%';
+            }, 100);
+
+            confidenceText.textContent = `${data.confidence} confidence`;
+
+            // Parse and display analysis as points
+            fullAnalysisText = data.reason;
+            const analysisPoints = parseAnalysisIntoPoints(data.reason);
+            const analysisContainer = document.getElementById('analysisPoints');
+            analysisContainer.innerHTML = '';
+
+            const icons = ['🔍', '💡', '📌', '🎯', '⚡', '🔬', '📊'];
+
+            analysisPoints.forEach((point, index) => {
+                const pointDiv = document.createElement('div');
+                pointDiv.className = 'analysis-point';
+                pointDiv.style.animationDelay = `${index * 0.1}s`;
+
+                const iconSpan = document.createElement('span');
+                iconSpan.className = 'point-icon';
+                iconSpan.textContent = icons[index % icons.length];
+
+                const textSpan = document.createElement('span');
+                textSpan.className = 'point-text';
+                textSpan.textContent = point;
+
+                pointDiv.appendChild(iconSpan);
+                pointDiv.appendChild(textSpan);
+                analysisContainer.appendChild(pointDiv);
+            });
+
+            result.style.display = 'block';
+        }
+
+        function displayError(message) {
+            result.innerHTML = `
+                <div class="result-header">
+                    <h2>⚠️ Error</h2>
+                </div>
+                <div class="error">
+                    <p>${message}</p>
+                </div>
+            `;
+            result.style.display = 'block';
+            setTimeout(() => {
+                result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+
+        // Text-to-Speech functionality - Indian Detective Voice
+        voiceBtn.addEventListener('click', () => {
+            if (currentSpeech) {
+                window.speechSynthesis.cancel();
+                currentSpeech = null;
+                voiceBtnText.textContent = 'Read Analysis';
+                voiceIcon.textContent = '🔊';
+                voiceBtn.classList.remove('speaking');
+                return;
+            }
+
+            if ('speechSynthesis' in window) {
+                // Add detective-style narration prefix
+                const detectiveNarration = `Let me tell you what I have discovered... ${fullAnalysisText}`;
+
+                currentSpeech = new SpeechSynthesisUtterance(detectiveNarration);
+
+                // Get available voices and try to find an Indian English voice
+                const voices = window.speechSynthesis.getVoices();
+
+                // Try to find Indian English voice first, then fallback to other English voices
+                const indianVoice = voices.find(voice =>
+                    voice.lang.includes('en-IN') ||
+                    voice.name.toLowerCase().includes('indian') ||
+                    voice.name.toLowerCase().includes('rishi') ||
+                    voice.name.toLowerCase().includes('hindi')
+                );
+
+                const britishVoice = voices.find(voice =>
+                    voice.lang.includes('en-GB') && !voice.name.toLowerCase().includes('female')
+                );
+
+                const deepVoice = voices.find(voice =>
+                    voice.lang.includes('en') &&
+                    !voice.name.toLowerCase().includes('female') &&
+                    !voice.name.toLowerCase().includes('samantha')
+                );
+
+                if (indianVoice) {
+                    currentSpeech.voice = indianVoice;
+                } else if (britishVoice) {
+                    currentSpeech.voice = britishVoice;
+                } else if (deepVoice) {
+                    currentSpeech.voice = deepVoice;
+                }
+
+                // Detective-like voice settings: slower, deeper, more dramatic
+                currentSpeech.rate = 1.0;  // Slower, more deliberate speech
+                currentSpeech.pitch = 0.85; // Deeper, more authoritative
+                currentSpeech.volume = 1;
+
+                currentSpeech.onstart = () => {
+                    voiceBtnText.textContent = 'Stop Reading';
+                    voiceIcon.textContent = '⏸️';
+                    voiceBtn.classList.add('speaking');
+                };
+
+                currentSpeech.onend = () => {
+                    currentSpeech = null;
+                    voiceBtnText.textContent = 'Read Analysis';
+                    voiceIcon.textContent = '🔊';
+                    voiceBtn.classList.remove('speaking');
+                };
+
+                currentSpeech.onerror = () => {
+                    currentSpeech = null;
+                    voiceBtnText.textContent = 'Read Analysis';
+                    voiceIcon.textContent = '🔊';
+                    voiceBtn.classList.remove('speaking');
+                    alert('Text-to-speech is not available in your browser');
+                };
+
+                window.speechSynthesis.speak(currentSpeech);
+            } else {
+                alert('Text-to-speech is not supported in your browser');
+            }
+        });
+
+        // Load voices when they become available
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = () => {
+                window.speechSynthesis.getVoices();
+            };
+        }
+
+        window.addEventListener('beforeunload', () => {
+            if (currentSpeech) {
+                window.speechSynthesis.cancel();
+            }
+        });
+    </script>
+</body>
+</html>
