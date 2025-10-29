@@ -1,8 +1,8 @@
 Flask
 gunicorn
-tensorflow-cpu          # The Linux-compatible version
-opencv-python-headless  # The server-side version (no GUI)
+tflite-runtime          # The lightweight TensorFlow Lite interpreter
+opencv-python-headless  # Server version of OpenCV
 mtcnn
 google-generativeai
 Pillow
-h5py
+numpy                   # mtcnn might need this explicitly
