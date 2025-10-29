@@ -1,0 +1,8 @@
+Flask
+gunicorn
+tensorflow-cpu          # The Linux-compatible version
+opencv-python-headless  # The server-side version (no GUI)
+mtcnn
+google-generativeai
+Pillow
+h5py
