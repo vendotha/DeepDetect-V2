@@ -1,247 +1,170 @@
-<div align="center">
-
 # 🔍 DeepDetect V2
 
-### AI-Powered Deepfake Detection Made Simple
+### Spatial–Frequency Deepfake Detection System
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Flask](https://img.shields.io/badge/Flask-2.0+-green.svg)](https://flask.palletsprojects.com/)
 [![TensorFlow](https://img.shields.io/badge/TensorFlow-2.0+-orange.svg)](https://www.tensorflow.org/)
 
-**Can you trust what you see online? DeepDetect V2 helps you find out.**
+**DeepDetect V2 is a deepfake detection system that combines spatial visual features with frequency-domain signals to identify manipulated media more effectively.**
 
- • [Getting Started](#-quick-start) • [How It Works](#-how-it-works) • [Performance](#-performance-metrics)
-
-
----
-
-</div>
-
-## 🎯 What is DeepDetect V2?
-
-In an era where AI-generated content is becoming indistinguishable from reality, **DeepDetect V2** empowers anyone to verify the authenticity of images and videos. Simply upload your media, and our advanced AI analyzes it in seconds—no technical knowledge required.
-
-### ✨ Why Choose DeepDetect V2?
-
-- **🚀 Lightning Fast** - Get results in seconds, not minutes
-- **🎓 Beginner Friendly** - No AI expertise needed
-- **🤖 AI-Explained Results** - Understand *why* something was flagged as fake
-- **🎯 High Accuracy** - 97% accuracy rate on benchmark datasets
-- **🌐 Web-Based** - Access from anywhere, no installation needed
+• Getting Started • Architecture • Performance • Research
 
 ---
 
-## 🎬 See It In Action
+## 🎯 Overview
 
-<div align="center">
+Deepfake generation techniques continue to improve and often bypass conventional visual inspection methods. DeepDetect V2 addresses this by combining:
 
-### Upload → Analyze → Understand
+* **Spatial image features (RGB domain)**
+* **Frequency-domain signals using DCT**
+* **Deep learning inference pipelines**
+* **Image and video analysis workflows**
 
-```mermaid
-graph LR
-    A[📤 Upload Image/Video] --> B[👤 Detect Faces]
-    B --> C[🔬 Deep Learning Analysis]
-    C --> D[🎯 Real or Fake?]
-    D --> E[💬 AI Explanation]
-    
-    style A fill:#4A90E2,color:#fff
-    style C fill:#E24A4A,color:#fff
-    style E fill:#4AE290,color:#fff
-```
-
-<table>
-<tr>
-<td width="33%">
-
-<p><b>Upload Your Media</b><br/>Images or videos in seconds</p>
-</td>
-<td width="33%">
-<p><b>AI Analysis</b><br/>MesoNet scans for manipulation</p>
-</td>
-<td width="33%">
-
-<p><b>Clear Results</b><br/>Easy-to-understand verdict</p>
-</td>
-</tr>
-</table>
-
-</div>
+The system is designed to improve robustness against compressed media and subtle manipulations often missed by spatial-only approaches.
 
 ---
 
-## 🛠️ How It Works
+## ✨ Features
 
-### The Technology Behind The Magic
-
-DeepDetect V2 combines cutting-edge AI technologies to provide reliable deepfake detection:
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Your Upload  →  Face Detection  →  MesoNet Model  →  Gemini AI │
-│   (Image/Video)     (MTCNN)      (Deep Learning)   (Explanation) │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-#### 🧠 The Detection Process
-
-1. **Face Extraction** - MTCNN technology locates and extracts the primary face from your media
-2. **Microscopic Analysis** - MesoNet deep learning model examines pixel-level inconsistencies invisible to the human eye
-3. **Confidence Scoring** - The model assigns a confidence score (0-100%) indicating likelihood of manipulation
-4. **AI Explanation** - Google's Gemini AI analyzes the visual evidence and explains the verdict in plain English
-
-#### 💻 Tech Stack
-
-<div align="center">
-
-| Category | Technology |
-|----------|-----------|
-| **Backend** | Python, Flask |
-| **AI/ML** | TensorFlow, Keras, MesoNet Architecture |
-| **Face Detection** | MTCNN (Multi-task Cascaded CNN) |
-| **AI Explanations** | Google Gemini Pro Vision API |
-| **Frontend** | HTML5, CSS3, JavaScript |
-| **Deployment** | Render, Gunicorn |
-
-</div>
+* 🚀 Fast image and video inference
+* 🎯 Dual-stream spatial + frequency analysis
+* 📊 Confidence-based prediction scores
+* 🔍 Frequency artifact detection
+* 🌐 Browser-based interface
+* 🐳 Dockerized deployment support
 
 ---
 
-## 📊 Performance Metrics
+## 🧠 System Architecture
 
-### Real-World Accuracy You Can Trust
+```text
+Image / Video
+      ↓
+Face Detection (MTCNN)
+      ↓
+Face Extraction Pipeline
+      ↓
 
-Tested on the industry-standard **FaceForensics++** benchmark dataset with over 1,000 videos.
+ ┌─────────────────────────┐
+ │ RGB Spatial Features    │
+ └─────────────────────────┘
 
-<div align="center">
+ ┌─────────────────────────┐
+ │ DCT Frequency Features  │
+ └─────────────────────────┘
 
-| Metric | Score | What It Means |
-|--------|-------|---------------|
-| **🎯 Accuracy** | 97% | Overall correctness across all predictions |
-| **✅ Precision** | 98% | When flagged as FAKE, it's actually fake 98% of the time |
-| **🔍 Recall** | 96% | Catches 96% of all actual deepfakes |
-| **⚖️ F1-Score** | 97% | Balanced performance measure |
-
-</div>
-
-### 📈 Visual Performance Analysis
-
-<div align="center">
-
-#### Confusion Matrix - Prediction Breakdown
-
+            ↓
+Feature Fusion Layer
+            ↓
+Dual-Stream CNN
+            ↓
+Prediction Layer
+            ↓
+Real / Deepfake
 ```
-                  Predicted
-                REAL    FAKE
-Actual REAL     485      12      ← 97.6% correct
-       FAKE      19     484      ← 96.2% caught
-```
-
-
-*Strong diagonal shows excellent classification performance*
 
 ---
 
-#### ROC Curve - Detection Capability
+## 🛠 Detection Pipeline
 
-**AUC Score: 0.98** - Near-perfect ability to distinguish real from fake
+### Step 1 — Face Extraction
 
-</div>
+Media is processed using MTCNN to detect and isolate facial regions.
 
-### ⚡ Speed Performance
+### Step 2 — Spatial Feature Processing
 
-- **Images**: < 3 seconds average processing time
-- **Videos**: ~1 second per second of video footage
-- **API Response**: < 2 seconds for Gemini explanations
+The RGB branch learns visual inconsistencies and manipulation artifacts.
+
+### Step 3 — Frequency Feature Processing
+
+DCT transforms are applied to identify hidden frequency-domain patterns often introduced during synthetic generation.
+
+### Step 4 — Feature Fusion
+
+Spatial and frequency representations are combined before classification.
+
+### Step 5 — Prediction
+
+The model outputs confidence scores for real and manipulated media.
+
+---
+
+## 💻 Tech Stack
+
+| Category           | Technology            |
+| ------------------ | --------------------- |
+| Backend            | Python, Flask         |
+| Deep Learning      | TensorFlow, Keras     |
+| Face Detection     | MTCNN                 |
+| Frequency Analysis | DCT                   |
+| Deployment         | Docker, Gunicorn      |
+| Frontend           | HTML, CSS, JavaScript |
+
+---
+
+## 📊 Performance
+
+Evaluated on benchmark datasets containing image and video deepfake samples.
+
+| Metric                     |                  Score |
+| -------------------------- | ---------------------: |
+| Accuracy                   |                    92% |
+| Precision                  |                    90% |
+| Frequency Branch Detection |                    85% |
+| Dataset Size               | 10k images + 1k videos |
+
+---
+
+## 📈 Comparative Performance
+
+| Feature                     | Spatial CNN | DeepDetect V2 |
+| --------------------------- | ----------: | ------------: |
+| RGB Features                |           ✓ |             ✓ |
+| Frequency Features          |           ✗ |             ✓ |
+| Robustness to Compression   |    Moderate |          High |
+| Detects Frequency Artifacts |           ✗ |             ✓ |
 
 ---
 
 ## 🚀 Quick Start
 
-### Run Locally in 5 Minutes
-
-**Prerequisites**: Python 3.8+ installed on your system
-
 ```bash
-# 1️⃣ Clone the repository
-git clone https://github.com/yourusername/deepdetect-v2.git
-cd deepdetect-v2
+git clone https://github.com/vendotha/DeepDetect-V2.git
 
-# 2️⃣ Create virtual environment
-python3 -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+cd DeepDetect-V2
 
-# 3️⃣ Install dependencies
+python -m venv venv
+
+source venv/bin/activate
+
 pip install -r requirements.txt
 
-# 4️⃣ Set up your Gemini API key
-export GEMINI_API_KEY="your_api_key_here"
-# Windows CMD: set GEMINI_API_KEY=your_api_key_here
-# Windows PowerShell: $env:GEMINI_API_KEY="your_api_key_here"
-
-# 5️⃣ Ensure model file is in place
-# Place your .hdf5 model in the model/ directory
-
-# 6️⃣ Launch the app
 python app.py
 ```
 
-Open your browser to `http://127.0.0.1:8080` and start detecting! 🎉
+Open:
 
-### 🔑 Getting Your Gemini API Key
-
-1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Sign in with your Google account
-3. Click "Create API Key"
-4. Copy and use in the setup above
+http://127.0.0.1:8080
 
 ---
 
+## 🔬 Research Context
 
+This project served as the implementation foundation for:
 
+**Spectra-FakeNet: Spatial-Frequency Deepfake Detection**
 
-## 🔮 Roadmap & Future Enhancements
+Submitted to IEEE
 
-- [ ] **Multi-Model Support** - Let users choose from different detection algorithms
-- [ ] **Batch Processing** - Analyze multiple files simultaneously
-- [ ] **Enhanced UI/UX** - More intuitive design with real-time progress
-- [ ] **Performance Dashboard** - Interactive metrics visualization
-- [ ] **Model Optimization** - ONNX conversion for faster inference
-- [ ] **Mobile App** - Native iOS and Android applications
-- [ ] **API Access** - RESTful API for developers
+The work explores combining RGB spatial information and DCT frequency-domain features for more robust deepfake detection.
 
 ---
 
-## 📄 License
+## 👨‍💻 Developer
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Buvananand Vendotha
 
----
+Portfolio: https://vendotha.web.app
 
-## 👨‍💻 About the Developer
-
-<div align="center">
-
-**Built with ❤️ by [Your Name]**
-
-[🌐 Portfolio](https://vendotha.onrender.com) • [💼 LinkedIn](https://linkedin.com/in/vendotha) • [📧 Email](mailto:vendotha@gmail.com)
-
-*Passionate about AI, computer vision, and building tools that make technology accessible to everyone.*
-
----
-
-### 🌟 If you find this project useful, please consider giving it a star!
-
-[![GitHub stars](https://img.shields.io/github/stars/vendotha/deepdetect-v2?style=social)](https://github.com/vendotha/deepdetect-v2)
-
-</div>
-
----
-
-<div align="center">
-
-**🛡️ Fighting Misinformation, One Image at a Time**
-
-Made with Python 🐍 • TensorFlow 🧠 • Gemini AI ✨
-
-</div>
+LinkedIn: https://linkedin.com/in/vendotha
