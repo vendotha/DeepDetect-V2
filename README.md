@@ -155,7 +155,8 @@ This project served as the implementation foundation for:
 
 **Spectra-FakeNet: Spatial-Frequency Deepfake Detection**
 
-Submitted to IEEE
+**Paper Link:** [Spectra FakeNet →](https://github.com/vendotha/Spectra-FakeNet)
+
 
 The work explores combining RGB spatial information and DCT frequency-domain features for more robust deepfake detection.
 
