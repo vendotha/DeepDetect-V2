@@ -68,23 +68,23 @@ Real / Deepfake
 
 ## 🛠 Detection Pipeline
 
-### Step 1 — Face Extraction
+### Step 1  Face Extraction
 
 Media is processed using MTCNN to detect and isolate facial regions.
 
-### Step 2 — Spatial Feature Processing
+### Step 2  Spatial Feature Processing
 
 The RGB branch learns visual inconsistencies and manipulation artifacts.
 
-### Step 3 — Frequency Feature Processing
+### Step 3  Frequency Feature Processing
 
 DCT transforms are applied to identify hidden frequency-domain patterns often introduced during synthetic generation.
 
-### Step 4 — Feature Fusion
+### Step 4  Feature Fusion
 
 Spatial and frequency representations are combined before classification.
 
-### Step 5 — Prediction
+### Step 5  Prediction
 
 The model outputs confidence scores for real and manipulated media.
 
